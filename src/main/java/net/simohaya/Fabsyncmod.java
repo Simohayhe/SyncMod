@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Fabsyncmod implements ModInitializer { // ★ クラス名をFabsyncmodに変更
+public class Fabsyncmod implements ModInitializer {
 	public static final String MOD_ID = "fab_sync_mod";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
@@ -25,12 +25,16 @@ public class Fabsyncmod implements ModInitializer { // ★ クラス名をFabsyn
 			throw new RuntimeException("Fabsyncmod: MySQL接続に失敗しました。サーバーの起動を中止します。");
 		}
 
-		PlayerEventHandler.registerEvents();
+		// サーバー起動時にDatabaseManagerにRegistryLookupを設定し、InventorySyncにサーバーインスタンスを設定
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			DatabaseManager.setRegistryLookup(server); // ★ DatabaseManagerにRegistryLookupを設定
+			InventorySync.setServerInstance(server);   // ★ InventorySyncにサーバーインスタンスを設定
+		});
 
-		// 定期的なインベントリ保存タスクの開始
+		PlayerEventHandler.registerEvents(); // PlayerEventHandlerのイベント登録はここで行う
+
 		InventorySync.startAutoSaveTask(config.autoSaveIntervalSeconds);
 
-		// サーバーシャットダウンイベントの登録
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			LOGGER.info("サーバーシャットダウン中... 全プレイヤーのインベントリを保存します。");
 			InventorySync.saveAllPlayersInventories(server);
